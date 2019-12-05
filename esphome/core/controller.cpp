@@ -53,6 +53,12 @@ void Controller::setup_controller() {
       obj->add_on_state_callback([this, obj]() { this->on_climate_update(obj); });
   }
 #endif
+#ifdef USE_CAMERA
+  for (auto *obj : App.get_cameras()) {
+    if (!obj->is_internal())
+      obj->add_on_state_callback([this, obj] { this->on_camera_update(obj); });
+  }
+#endif
 }
 
 }  // namespace esphome

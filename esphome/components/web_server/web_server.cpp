@@ -106,6 +106,12 @@ void WebServer::setup() {
       if (!obj->is_internal())
         client->send(this->text_sensor_json(obj, obj->state).c_str(), "state");
 #endif
+
+#ifdef USE_CAMERA
+    for (auto *obj : App.get_cameras())
+      if (!obj->is_internal())
+        client->send(this->camera_json(obj).c_str(), "state");
+#endif
   });
 
 #ifdef USE_LOGGER
@@ -169,6 +175,13 @@ void WebServer::handle_index_request(AsyncWebServerRequest *request) {
 #ifdef USE_TEXT_SENSOR
   for (auto *obj : App.get_text_sensors())
     write_row(stream, obj, "text_sensor", "");
+#endif
+
+#ifdef USE_CAMERA
+  for (auto *obj : App.get_cameras())
+    if (!obj->is_internal())
+      write_row(stream, obj, "camera", "<button>Image</button>");
+      //write_row(stream, obj, "camera", "<button>Stream</button>");
 #endif
 
   stream->print(F("</tbody></table><p>See <a href=\"https://esphome.io/web-api/index.html\">ESPHome Web API</a> for "
@@ -274,6 +287,45 @@ void WebServer::handle_switch_request(AsyncWebServerRequest *request, UrlMatch m
   request->send(404);
 }
 #endif
+
+#ifdef USE_CAMERA
+void WebServer::on_camera_update(camera::Camera *obj) {
+  this->events_.send(this->camera_json(obj).c_str(), "state");
+}
+std::string WebServer::camera_json(camera::Camera *obj) {
+  return json::build_json([obj](JsonObject &root) {
+    root["id"] = "camera-" + obj->get_object_id();
+    root["state"] = obj->get_state_as_str();
+    root["value"] = root["state"];
+  });
+}
+void WebServer::handle_camera_request(AsyncWebServerRequest *request, UrlMatch match) {
+  for (camera::Camera *obj : App.get_cameras()) {
+    if (obj->is_internal())
+      continue;
+    if (obj->get_object_id() != match.id)
+      continue;
+
+    if (request->method() == HTTP_GET) {
+      std::string data = this->camera_json(obj);
+      request->send(200, "text/json", data.c_str());
+    } else if (match.method == "image") {
+      obj->request_image();
+      ESP_LOGD(TAG, "Buffer Length '%d'", obj->buffer_length);
+      request->send("image/jpeg", obj->buffer_length, [&obj](uint8_t *buffer, size_t maxLen, size_t index) -> size_t {
+        ESP_LOGD(TAG, " maxLen %d", maxLen);
+        ESP_LOGD(TAG, " index %d", index);
+        return obj->read_image(buffer, maxLen, index);
+      });
+    } else {
+      request->send(404);
+    }
+    return;
+  }
+  request->send(404);
+}
+#endif
+
 
 #ifdef USE_BINARY_SENSOR
 void WebServer::on_binary_sensor_update(binary_sensor::BinarySensor *obj, bool state) {
@@ -493,6 +545,12 @@ bool WebServer::canHandle(AsyncWebServerRequest *request) {
     return true;
 #endif
 
+#ifdef USE_CAMERA
+  if ((request->method() == HTTP_POST || request->method() == HTTP_GET) && match.domain == "camera")
+    return true;
+#endif
+
+
   return false;
 }
 void WebServer::handleRequest(AsyncWebServerRequest *request) {
@@ -544,6 +602,13 @@ void WebServer::handleRequest(AsyncWebServerRequest *request) {
 #ifdef USE_TEXT_SENSOR
   if (match.domain == "text_sensor") {
     this->handle_text_sensor_request(request, match);
+    return;
+  }
+#endif
+
+#ifdef USE_CAMERA
+  if (match.domain == "camera") {
+    this->handle_camera_request(request, match);
     return;
   }
 #endif
