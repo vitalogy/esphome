@@ -25,6 +25,9 @@
 #ifdef USE_CLIMATE
 #include "esphome/components/climate/climate.h"
 #endif
+#ifdef USE_CAMERA
+#include "esphome/components/camera/camera.h"
+#endif
 
 namespace esphome {
 
@@ -54,6 +57,9 @@ class Controller {
 #endif
 #ifdef USE_CLIMATE
   virtual void on_climate_update(climate::Climate *obj){};
+#endif
+#ifdef USE_CAMERA
+  virtual void on_camera_update(camera::Camera *obj){};
 #endif
 };
 

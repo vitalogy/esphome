@@ -32,6 +32,9 @@
 #ifdef USE_COVER
 #include "esphome/components/cover/cover.h"
 #endif
+#ifdef USE_CAMERA
+#include "esphome/components/camera/camera.h"
+#endif
 
 namespace esphome {
 
@@ -63,6 +66,10 @@ class Application {
 
 #ifdef USE_FAN
   void register_fan(fan::FanState *state) { this->fans_.push_back(state); }
+#endif
+
+#ifdef USE_CAMERA
+  void register_camera(camera::Camera *camera) { this->cameras_.push_back(camera); }
 #endif
 
 #ifdef USE_COVER
@@ -174,6 +181,15 @@ class Application {
     return nullptr;
   }
 #endif
+#ifdef USE_CAMERA
+  const std::vector<camera::Camera *> &get_cameras() { return this->cameras_; }
+  camera::Camera *get_camera_by_key(uint32_t key, bool include_internal = false) {
+    for (auto *obj : this->cameras_)
+      if (obj->get_object_id_hash() == key && (include_internal || !obj->is_internal()))
+        return obj;
+    return nullptr;
+  }
+#endif
 #ifdef USE_COVER
   const std::vector<cover::Cover *> &get_covers() { return this->covers_; }
   cover::Cover *get_cover_by_key(uint32_t key, bool include_internal = false) {
@@ -225,6 +241,9 @@ class Application {
 #endif
 #ifdef USE_FAN
   std::vector<fan::FanState *> fans_{};
+#endif
+#ifdef USE_CAMERA
+  std::vector<camera::Camera *> cameras_{};
 #endif
 #ifdef USE_COVER
   std::vector<cover::Cover *> covers_{};

@@ -122,6 +122,16 @@ class WebServer : public Controller, public Component, public AsyncWebHandler {
   std::string text_sensor_json(text_sensor::TextSensor *obj, const std::string &value);
 #endif
 
+#ifdef USE_CAMERA
+  void on_camera_update(camera::Camera *obj) override;
+
+  /// Handle a camera request under '/camera/<id>'.
+  void handle_camera_request(AsyncWebServerRequest *request, UrlMatch match);
+
+  /// Dump the camera state with its value as a JSON string.
+  std::string camera_json(camera::Camera *obj);
+#endif
+
   /// Override the web handler's canHandle method.
   bool canHandle(AsyncWebServerRequest *request) override;
   /// Override the web handler's handleRequest method.
